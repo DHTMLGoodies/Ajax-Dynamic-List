@@ -1,14 +1,6 @@
 function IsNumeric(sText) {
-	var ValidChars = "0123456789";
-	var IsNumber = true;
-	var Char;
-	for (i = 0; i < sText.length && IsNumber == true; i++) {
-		Char = sText.charAt(i);
-		if (ValidChars.indexOf(Char) == -1) {
-			IsNumber = false;
-		}
-	}
-	return IsNumber;
+	sText = sText + '';
+	return /^[0-9]+?$/g.test(sText);
 }
 /************************************************************************************************************
  Ajax dynamic list
@@ -37,293 +29,323 @@ function IsNumeric(sText) {
 
  ************************************************************************************************************/
 
-var ajaxBox_offsetX = 0;
-var ajaxBox_offsetY = 0;
-var ajax_list_externalFile = '/zip/include/ZipCitiesArray.php';	// Path to external file
-var minimumLettersBeforeLookup = 1;	// Number of letters entered before a lookup is performed.
+window.buddy = window['buddy'] || {};
 
-var ajax_list_objects = new Array();
-var ajax_list_cachedLists = new Array();
-var ajax_list_activeInput = false;
-var ajax_list_activeItem;
-var ajax_list_optionDivFirstItem = false;
-var ajax_list_currentLetters = new Array();
-var ajax_optionDiv = false;
-var ajax_optionDiv_iframe = false;
+buddy.AjaxDynamicList = new Class({
+	Extends:Events,
 
-var ajax_list_MSIE = false;
-if (navigator.userAgent.indexOf('MSIE') >= 0 && navigator.userAgent.indexOf('Opera') < 0)ajax_list_MSIE = true;
+	ajaxBox_offsetX:0,
+	ajaxBox_offsetY:0,
+	url:'/zip/include/ZipCitiesArray.php',
+	// Path to external file
+	minimumLettersBeforeLookup:1, // Number of letters entered before a lookup is performed.
 
-var currentListIndex = 0;
+	ajax_list_objects:[],
+	cache:[],
+	ajax_list_activeInput:undefined,
+	activeListItem:undefined,
+	ajax_list_optionDivFirstItem:false,
+	ajax_list_currentLetters:[],
+	ajax_optionDiv:undefined,
+	ajax_optionDiv_iframe:undefined,
 
-function ajax_getTopPos(inputObj) {
+	ajax_list_MSIE:(navigator.userAgent.indexOf('MSIE') >= 0 && navigator.userAgent.indexOf('Opera') < 0),
 
-	var returnValue = inputObj.offsetTop;
-	while ((inputObj = inputObj.offsetParent) != null) {
-		returnValue += inputObj.offsetTop;
-	}
-	return returnValue;
-}
-function ajax_list_cancelEvent() {
-	return false;
-}
+	currentListIndex:0,
 
-function ajax_getLeftPos(inputObj) {
-	var returnValue = inputObj.offsetLeft;
-	while ((inputObj = inputObj.offsetParent) != null)returnValue += inputObj.offsetLeft;
 
-	return returnValue;
-}
+	getTop:function (inputObj) {
 
-function ajax_option_setValue(e, inputObj) {
-	if (!inputObj)inputObj = this;
-	var tmpValue = inputObj.innerHTML;
-	if (ajax_list_MSIE)tmpValue = inputObj.innerText; else tmpValue = inputObj.textContent;
-	if (!tmpValue)tmpValue = inputObj.innerHTML;
-	ajax_list_activeInput.value = tmpValue;
-	if (document.getElementById(ajax_list_activeInput.name + '_hidden'))document.getElementById(ajax_list_activeInput.name + '_hidden').value = inputObj.id;
-
-	//var f1=setTimeout('ajax_list_activeInput.focus()',1);
-	//var f2=setTimeout('ajax_list_activeInput.value = ajax_list_activeInput.value',1);
-
-	ajax_options_hide();
-}
-
-function ajax_options_hide() {
-	if (ajax_optionDiv)ajax_optionDiv.style.display = 'none';
-	if (ajax_optionDiv_iframe)ajax_optionDiv_iframe.style.display = 'none';
-}
-
-function ajax_options_rollOverActiveItem(item, fromKeyBoard) {
-	if (ajax_list_activeItem)ajax_list_activeItem.className = 'optionDiv';
-	item.className = 'optionDivSelected';
-	ajax_list_activeItem = item;
-
-	if (fromKeyBoard) {
-		if (ajax_list_activeItem.offsetTop > ajax_optionDiv.offsetHeight) {
-			ajax_optionDiv.scrollTop = ajax_list_activeItem.offsetTop - ajax_optionDiv.offsetHeight + ajax_list_activeItem.offsetHeight + 2;
+		var returnValue = inputObj.offsetTop;
+		while ((inputObj = inputObj.offsetParent) != null) {
+			returnValue += inputObj.offsetTop;
 		}
-		if (ajax_list_activeItem.offsetTop < ajax_optionDiv.scrollTop) {
-			ajax_optionDiv.scrollTop = 0;
+		return returnValue;
+	},
+
+	ajax_list_cancelEvent:function () {
+		return false;
+	},
+
+	getLeft:function (inputObj) {
+		var returnValue = inputObj.offsetLeft;
+		while ((inputObj = inputObj.offsetParent) != null)returnValue += inputObj.offsetLeft;
+
+		return returnValue;
+	},
+
+	ajax_option_setValue:function (e) {
+		var inputObj = e.target;
+		var tmpValue = inputObj.innerHTML;
+
+		if (this.ajax_list_MSIE)tmpValue = inputObj.innerText; else tmpValue = inputObj.textContent;
+		if (!tmpValue)tmpValue = inputObj.innerHTML;
+
+		this.ajax_list_activeInput.value = tmpValue;
+		if (document.getElementById(this.ajax_list_activeInput.name + '_hidden'))document.getElementById(this.ajax_list_activeInput.name + '_hidden').value = inputObj.id;
+
+
+		this.ajax_options_hide();
+	},
+
+	ajax_options_hide:function () {
+		if (this.ajax_optionDiv)this.ajax_optionDiv.style.display = 'none';
+		if (this.ajax_optionDiv_iframe)this.ajax_optionDiv_iframe.style.display = 'none';
+	},
+
+	ajax_options_rollOverActiveItem:function (item, fromKeyBoard) {
+		if (!fromKeyBoard)item = item.target;
+
+		if (this.activeListItem)this.activeListItem.className = 'optionDiv';
+		item.className = 'optionDivSelected';
+		this.activeListItem = item;
+
+		if (fromKeyBoard) {
+			if (this.activeListItem.offsetTop > this.ajax_optionDiv.offsetHeight) {
+				this.ajax_optionDiv.scrollTop = this.activeListItem.offsetTop - this.ajax_optionDiv.offsetHeight + this.activeListItem.offsetHeight + 2;
+			}
+			if (this.activeListItem.offsetTop < this.ajax_optionDiv.scrollTop) {
+				this.ajax_optionDiv.scrollTop = 0;
+			}
 		}
-	}
-}
+	},
 
-function ajax_option_list_buildList(letters, paramToExternalFile) {
-
-	ajax_optionDiv.innerHTML = '';
-	ajax_list_activeItem = false;
-	if (ajax_list_cachedLists[paramToExternalFile][letters.toLowerCase()].length <= 1) {
-		ajax_options_hide();
-		return;
-	}
-
-
-	ajax_list_optionDivFirstItem = false;
-	var optionsAdded = false;
-	for (var no = 0; no < ajax_list_cachedLists[paramToExternalFile][letters.toLowerCase()].length; no++) {
-		if (ajax_list_cachedLists[paramToExternalFile][letters.toLowerCase()][no].length == 0)continue;
-		optionsAdded = true;
-		var div = document.createElement('DIV');
-		var items = ajax_list_cachedLists[paramToExternalFile][letters.toLowerCase()][no].split(/###/gi);
-
-		if (ajax_list_cachedLists[paramToExternalFile][letters.toLowerCase()].length == 1 && ajax_list_activeInput.value == items[0]) {
-			ajax_options_hide();
+	populateList:function (letters, param) {
+		this.ajax_optionDiv.innerHTML = '';
+		this.activeListItem = false;
+		if (this.cache[param][letters.toLowerCase()].length <= 1) {
+			this.ajax_options_hide();
 			return;
 		}
 
+		this.ajax_list_optionDivFirstItem = false;
+		var optionsAdded = false;
+		for (var no = 0; no < this.cache[param][letters.toLowerCase()].length; no++) {
+			if (this.cache[param][letters.toLowerCase()][no].length == 0)continue;
+			optionsAdded = true;
+			var div = document.createElement('DIV');
+			var items = this.cache[param][letters.toLowerCase()][no].split(/###/gi);
 
-		div.innerHTML = items[items.length - 1];
-		div.id = items[0];
-		div.className = 'optionDiv';
-		div.onmouseover = function () {
-			ajax_options_rollOverActiveItem(this, false)
+			if (this.cache[param][letters.toLowerCase()].length == 1 && this.ajax_list_activeInput.value == items[0]) {
+				this.ajax_options_hide();
+				return;
+			}
+
+
+			div.innerHTML = items[items.length - 1];
+			div.id = items[0];
+			div.className = 'optionDiv';
+			div.addEvent('mouseenter', this.ajax_options_rollOverActiveItem.bind(this));
+			div.addEvent('click', this.ajax_option_setValue.bind(this));
+
+			if (!this.ajax_list_optionDivFirstItem)this.ajax_list_optionDivFirstItem = div;
+			this.ajax_optionDiv.appendChild(div);
 		}
-		div.onclick = ajax_option_setValue;
-		if (!ajax_list_optionDivFirstItem)ajax_list_optionDivFirstItem = div;
-		ajax_optionDiv.appendChild(div);
-	}
-	if (optionsAdded) {
-		ajax_optionDiv.style.display = 'block';
-		if (ajax_optionDiv_iframe)ajax_optionDiv_iframe.style.display = '';
-		ajax_options_rollOverActiveItem(ajax_list_optionDivFirstItem, true);
-	}
-
-}
-
-function ajax_option_list_showContent(ajaxIndex, inputObj, paramToExternalFile, whichIndex) {
-	if (whichIndex != currentListIndex)return;
-	var letters = inputObj.value;
-	var content = ajax_list_objects[ajaxIndex].response;
-	var elements = content.split('|');
-
-	// ----------------------------------- //
-	//      This section added by BL       //
-	// ----------------------------------- //
-	if (elements[0].substr(0, 3) == "Not" && paramToExternalFile == "GetOriValues") {
-		document.getElementById("OriNF").innerHTML = "Not Found";
-	}
-	else if (paramToExternalFile == "GetOriValues") {
-		document.getElementById('OriNF').innerHTML = "";
-	}
-	if (elements[0].substr(0, 3) == "Not" && paramToExternalFile == "GetDesValues") {
-		document.getElementById('DesNF').innerHTML = "Not Found";
-	}
-	else if (paramToExternalFile == "GetDesValues") {
-		document.getElementById('DesNF').innerHTML = "";
-	}
-	if (elements.length == 1 && elements[0].substr(0, 3) != "Not") // (BL) If there is only one item, and it matches, put it in the input box
-	{
-		if (IsNumeric(inputObj.value)) {
-			inputObj.value = elements[0].substr(6);
-		} //(BL)
-		else {
-			inputObj.value = elements[0].substr(6);
-		} // (BL)
-	}
-	// ----------------------------------- //
-
-	ajax_list_cachedLists[paramToExternalFile][letters.toLowerCase()] = elements;
-	ajax_option_list_buildList(letters, paramToExternalFile);
-}
-
-function ajax_option_resize(inputObj) {
-	ajax_optionDiv.style.top = (ajax_getTopPos(inputObj) + inputObj.offsetHeight + ajaxBox_offsetY) + 'px';
-	ajax_optionDiv.style.left = (ajax_getLeftPos(inputObj) + ajaxBox_offsetX) + 'px';
-	if (ajax_optionDiv_iframe) {
-		ajax_optionDiv_iframe.style.left = ajax_optionDiv.style.left;
-		ajax_optionDiv_iframe.style.top = ajax_optionDiv.style.top;
-	}
-
-}
-
-function ajax_showOptions(inputObj, paramToExternalFile, Source, e) //(BL) Source added
-{
-	if (e.keyCode == 13 || e.keyCode == 9)return;
-	if (ajax_list_currentLetters[inputObj.name] == inputObj.value)return;
-	ajax_list_cachedLists[paramToExternalFile] = new Array(); // (BL) At one point, the line below was causing problems with numeric (zip code) entries. Believe solved.
-	if (!ajax_list_cachedLists[paramToExternalFile])ajax_list_cachedLists[paramToExternalFile] = new Array();
-	ajax_list_currentLetters[inputObj.name] = inputObj.value;
-	if (!ajax_optionDiv || Source != ajax_optionDiv.id.substr(0, 3)) { // (BL) Added OR
-		ajax_optionDiv = document.createElement('DIV');
-		ajax_optionDiv.id = Source + '_listOfOptions'; // (BL) replaced "ajax" with Source variable
-		document.body.appendChild(ajax_optionDiv);
-
-		if (ajax_list_MSIE) {
-			ajax_optionDiv_iframe = document.createElement('IFRAME');
-			ajax_optionDiv_iframe.border = '0';
-			ajax_optionDiv_iframe.style.width = ajax_optionDiv.clientWidth + 'px';
-			ajax_optionDiv_iframe.style.height = ajax_optionDiv.clientHeight + 'px';
-			ajax_optionDiv_iframe.id = Source + '_listOfOptions_iframe'; // (BL) replaced "ajax" with Source variable
-			document.body.appendChild(ajax_optionDiv_iframe);
+		if (optionsAdded) {
+			this.ajax_optionDiv.style.display = 'block';
+			if (this.ajax_optionDiv_iframe)this.ajax_optionDiv_iframe.style.display = '';
+			this.ajax_options_rollOverActiveItem(this.ajax_list_optionDivFirstItem, true);
 		}
+
+	},
+
+	receiveServerResponse:function (content, inputObj, param, whichIndex) {
+		if (whichIndex != this.currentListIndex)return;
+		var letters = inputObj.value;
+
+		var elements = content.split('|');
+
+		if (elements.length == 1 && elements[0].substr(0, 3) != "Not") // (BL) If there is only one item, and it matches, put it in the input box
+		{
+			if (IsNumeric(inputObj.value)) {
+				inputObj.value = elements[0].substr(6);
+			} //(BL)
+			else {
+				inputObj.value = elements[0].substr(6);
+			} // (BL)
+		}
+		// ----------------------------------- //
+
+		this.cache[param][letters.toLowerCase()] = elements;
+		this.populateList(letters, param);
+	},
+
+	onResize:function (inputObj) {
+		this.ajax_optionDiv.style.top = (this.getTop(inputObj) + inputObj.offsetHeight + this.ajaxBox_offsetY) + 'px';
+		this.ajax_optionDiv.style.left = (this.getLeft(inputObj) + this.ajaxBox_offsetX) + 'px';
+		if (this.ajax_optionDiv_iframe) {
+			this.ajax_optionDiv_iframe.style.left = this.ajax_optionDiv.style.left;
+			this.ajax_optionDiv_iframe.style.top = this.ajax_optionDiv.style.top;
+		}
+
+	},
+
+	initialize:function (config) {
+		config = config || {};
+		this.url = config.url || this.url;
+
+		document.documentElement.addEvent('click', this.autoHideList.bind(this));
+
+
+	},
+
+	createIframe:function () {
+
+		if (this.ajax_list_MSIE && !this.ajax_optionDiv_iframe) {
+			this.ajax_optionDiv_iframe = document.createElement('IFRAME');
+			this.ajax_optionDiv_iframe.border = '0';
+			this.ajax_optionDiv_iframe.style.width = this.ajax_optionDiv.clientWidth + 'px';
+			this.ajax_optionDiv_iframe.style.height = this.ajax_optionDiv.clientHeight + 'px';
+			this.ajax_optionDiv_iframe.id = '_listOfOptions_iframe'; // (BL) replaced "ajax" with Source variable
+			document.body.appendChild(this.ajax_optionDiv_iframe);
+		}
+
+	},
+
+	params:{},
+
+	/**
+	 Add new input
+	 @param {String|HTMLElement} field
+	 @param {String} param
+	 @example
+		 var list = new buddy.AjaxDynamicList({
+			 url : 'ajax-list-countries.php'
+		 });
+		 list.add('country', 'getCountriesByLetters');
+		 list.add('country2', 'getCountriesByLetters');
+		 list.add('city', 'getCity');
+	 where "country", "country2" and "city" are id's of <input> fields. "getCountriesByLetters" is the parameter sent to the server with the request.
+	 */
+	add:function (field, param) {
+		field = document.id(field);
+
+		field.id = field.id || ('ajax-list-input-' + Math.random()).replace(/\./g, '');
+
+		field.addEvent('focus', this.showList.bind(this));
+		field.addEvent('keyup', this.showList.bind(this));
+
+		field.autocomplete = "off";
+
+		this.params[field.id] = param;
+	},
+
+	createOptionContainer:function () {
+		this.ajax_optionDiv = document.createElement('DIV');
+		this.ajax_optionDiv.id = 'ajax_listOfOptions'; // (BL) replaced "ajax" with Source variable
+		document.body.appendChild(this.ajax_optionDiv);
 
 		var allInputs = document.getElementsByTagName('INPUT');
 		for (var no = 0; no < allInputs.length; no++) {
-			if (!allInputs[no].onkeyup)allInputs[no].onfocus = ajax_options_hide;
+			document.id(allInputs[no]).addEvent('focus', this.ajax_options_hide);
 		}
 		var allSelects = document.getElementsByTagName('SELECT');
-		for (var no = 0; no < allSelects.length; no++) {
-			allSelects[no].onfocus = ajax_options_hide;
+		for (no = 0; no < allSelects.length; no++) {
+			document.id(allSelects[no]).addEvent('focus', this.ajax_options_hide);
 		}
 
-		var oldonkeydown = document.body.onkeydown;
-		if (typeof oldonkeydown != 'function') {
-			document.body.onkeydown = ajax_option_keyNavigation;
+		document.body.addEvent('keydown', this.keyNav.bind(this));
+		document.body.addEvent('resize', this.onResize.bind(this));
+	},
+
+	showList:function (e)//(BL) Source added
+	{
+		inputObj = e.target;
+		param = this.params[e.target.id];
+
+		this.ajax_list_activeInput = inputObj;
+
+		if (e.keyCode == 13 || e.keyCode == 9)return;
+		if (this.ajax_list_currentLetters[inputObj.name] == inputObj.value)return;
+		this.cache[param] = []; // (BL) At one point, the line below was causing problems with numeric (zip code) entries. Believe solved.
+		if (!this.cache[param])this.cache[param] = [];
+		this.ajax_list_currentLetters[inputObj.name] = inputObj.value;
+		if (!this.ajax_optionDiv) { 
+			this.createOptionContainer();
+		}
+
+		if (inputObj.value.length < this.minimumLettersBeforeLookup) {
+			this.ajax_options_hide();
+			return;
+		}
+
+		this.ajax_optionDiv.style.top = (this.getTop(inputObj) + inputObj.offsetHeight + this.ajaxBox_offsetY) + 'px';
+		this.ajax_optionDiv.style.left = (this.getLeft(inputObj) + this.ajaxBox_offsetX) + 'px';
+		if (this.ajax_optionDiv_iframe) {
+			this.ajax_optionDiv_iframe.style.left = this.ajax_optionDiv.style.left;
+			this.ajax_optionDiv_iframe.style.top = this.ajax_optionDiv.style.top;
+		}
+
+
+		this.ajax_optionDiv.onselectstart = this.ajax_list_cancelEvent;
+		this.currentListIndex++;
+		if (this.cache[param][inputObj.value.toLowerCase()]) {
+			this.populateList(inputObj.value, param, this.currentListIndex);
 		} else {
-			document.body.onkeydown = function () {
-				oldonkeydown();
-				ajax_option_keyNavigation();
+			this.sendRequest(inputObj, param);
+		}
+	},
+
+	sendRequest:function (field, param) {
+
+		var payload = {};
+		payload[param] = 1;
+		payload.letters = field.value;
+		var index = this.currentListIndex;
+
+		var req = new Request({
+			url:this.url,
+			data:payload,
+
+			onComplete:function (text) {
+				this.receiveServerResponse(text, field, param, index);
+			}.bind(this)
+		});
+		req.send();
+	},
+
+	keyNav:function (e) {
+		if (document.all)e = event;
+
+		if (!this.ajax_optionDiv)return undefined;
+		if (this.ajax_optionDiv.style.display == 'none')return undefined;
+
+		if (e.key == 'up') {    // Up arrow
+			if (!this.activeListItem)return undefined;
+			if (this.activeListItem && !this.activeListItem.previousSibling)return undefined;
+			this.ajax_options_rollOverActiveItem(this.activeListItem.previousSibling, true);
+		}
+
+		if (e.key == 'down') {    // Down arrow
+			if (!this.activeListItem) {
+				this.ajax_options_rollOverActiveItem(this.ajax_list_optionDivFirstItem, true);
+			} else {
+				if (!this.activeListItem.nextSibling)return undefined;
+				this.ajax_options_rollOverActiveItem(this.activeListItem.nextSibling, true);
 			}
 		}
-		var oldonresize = document.body.onresize;
-		if (typeof oldonresize != 'function') {
-			document.body.onresize = function () {
-				ajax_option_resize(inputObj);
-			};
-		} else {
-			document.body.onresize = function () {
-				oldonresize();
-				ajax_option_resize(inputObj);
+
+		if (e.key == 'enter' || e.key == 'tab') {    // Enter key or tab key
+			if (this.activeListItem && this.activeListItem.className == 'optionDivSelected') {
+				this.ajax_option_setValue({ target:this.activeListItem });
 			}
+			this.ajax_options_hide();
+			if (e.key == 'enter') {
+				this.ajax_list_activeInput.blur();
+			}
+			return e.key != 'enter';
 		}
 
-	}
-
-	if (inputObj.value.length < minimumLettersBeforeLookup) {
-		ajax_options_hide();
-		return;
-	}
-
-
-	ajax_optionDiv.style.top = (ajax_getTopPos(inputObj) + inputObj.offsetHeight + ajaxBox_offsetY) + 'px';
-	ajax_optionDiv.style.left = (ajax_getLeftPos(inputObj) + ajaxBox_offsetX) + 'px';
-	if (ajax_optionDiv_iframe) {
-		ajax_optionDiv_iframe.style.left = ajax_optionDiv.style.left;
-		ajax_optionDiv_iframe.style.top = ajax_optionDiv.style.top;
-	}
-
-	ajax_list_activeInput = inputObj;
-	ajax_optionDiv.onselectstart = ajax_list_cancelEvent;
-	currentListIndex++;
-	if (ajax_list_cachedLists[paramToExternalFile][inputObj.value.toLowerCase()]) {
-		ajax_option_list_buildList(inputObj.value, paramToExternalFile, currentListIndex);
-	} else {
-		var tmpIndex = currentListIndex / 1;
-		ajax_optionDiv.innerHTML = '';
-		var ajaxIndex = ajax_list_objects.length;
-		ajax_list_objects[ajaxIndex] = new sack();
-		var url = ajax_list_externalFile + '?' + paramToExternalFile + '=1&letters=' + inputObj.value.replace(" ", "+");
-		ajax_list_objects[ajaxIndex].requestFile = url;	// Specifying which file to get
-		ajax_list_objects[ajaxIndex].onCompletion = function () {
-			ajax_option_list_showContent(ajaxIndex, inputObj, paramToExternalFile, tmpIndex);
-		};	// Specify function that will be executed after file has been found
-		ajax_list_objects[ajaxIndex].runAJAX();		// Execute AJAX function
-	}
-
-
-}
-
-function ajax_option_keyNavigation(e) {
-	if (document.all)e = event;
-
-	if (!ajax_optionDiv)return;
-	if (ajax_optionDiv.style.display == 'none')return;
-
-	if (e.keyCode == 38) {    // Up arrow
-		if (!ajax_list_activeItem)return;
-		if (ajax_list_activeItem && !ajax_list_activeItem.previousSibling)return;
-		ajax_options_rollOverActiveItem(ajax_list_activeItem.previousSibling, true);
-	}
-
-	if (e.keyCode == 40) {    // Down arrow
-		if (!ajax_list_activeItem) {
-			ajax_options_rollOverActiveItem(ajax_list_optionDivFirstItem, true);
-		} else {
-			if (!ajax_list_activeItem.nextSibling)return;
-			ajax_options_rollOverActiveItem(ajax_list_activeItem.nextSibling, true);
+		if (e.key == 'esc') {    // Escape key
+			this.ajax_options_hide();
 		}
+
+		return undefined;
+	},
+
+	autoHideList:function (e) {
+		var source = e.target;
+		if (source.tagName.toLowerCase() != 'input' && source.tagName.toLowerCase() != 'textarea')this.ajax_options_hide();
 	}
+});
 
-	if (e.keyCode == 13 || e.keyCode == 9) {    // Enter key or tab key
-		if (ajax_list_activeItem && ajax_list_activeItem.className == 'optionDivSelected')ajax_option_setValue(false, ajax_list_activeItem);
-		if (e.keyCode == 13)return false; else return true;
-	}
-	if (e.keyCode == 27) {    // Escape key
-		ajax_options_hide();
-	}
-}
-
-
-document.documentElement.onclick = autoHideList;
-
-function autoHideList(e) {
-	if (document.all)e = event;
-
-	if (e.target) source = e.target;
-	else if (e.srcElement) source = e.srcElement;
-	if (source.nodeType == 3) // defeat Safari bug
-		source = source.parentNode;
-	if (source.tagName.toLowerCase() != 'input' && source.tagName.toLowerCase() != 'textarea')ajax_options_hide();
-
-}

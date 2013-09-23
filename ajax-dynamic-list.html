@@ -1,13 +1,8 @@
-<? @include($_SERVER['DOCUMENT_ROOT']."/config/log_visitors.inc"); ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
 	<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
 	<title>Ajax - dynamic list</title>
-	<?
-	$metaDescription = 'Free Dynamic combo from DHTMLGoodies.com. Start typing and the script will show suggestions below the input field';
-	@include($_SERVER['DOCUMENT_ROOT']."/config/metatags.inc");
-	?>
 	<style type="text/css">
 
 	/* START CSS NEEDED ONLY IN DEMO */
@@ -77,6 +72,7 @@
 	}
 	</style>
 	<script type="text/javascript" src="js/ajax.js"></script>
+    <script type="text/javascript" src="js/mootools-core-1.4.5.js"></script>
 	<script type="text/javascript" src="js/ajax-dynamic-list.js">
 	/************************************************************************************************************
 	(C) www.dhtmlgoodies.com, April 2006
@@ -107,7 +103,7 @@
 			<table border="0">
 				<tr>
 					<td><label for="country">Country: </label></td>
-					<td><input type="text" id="country" name="country" onblur="self.status=Math.random()" value="" onfocus="ajax_showOptions(this,'getCountriesByLetters',event)" onkeyup="ajax_showOptions(this,'getCountriesByLetters',event)">
+					<td><input type="text" id="country" name="country" onblur="self.status=Math.random()" value="">
 					<input type="hidden" id="country_hidden" name="country_ID"><!-- THE ID OF the country will be inserted into this hidden input --></td>
 				</tr>
 				<tr>
@@ -124,7 +120,11 @@
 				</tr>
 				<tr>
 					<td><label for="country">Country2: </label></td>
-					<td><input type="text" id="country2" name="country2" value="" onkeyup="ajax_showOptions(this,'getCountriesByLetters',event)"></td>
+					<td><input type="text" id="country2" name="country2"></td>
+				</tr>
+				<tr>
+					<td><label for="country">City: </label></td>
+					<td><input type="text" id="city" name="city"></td>
 				</tr>
 			</table>
 			<p>Type in something in the textfield "country" or "country2"</p>
@@ -132,12 +132,15 @@
 
 		</form>
 	</div>
-	<?
-	include($_SERVER['DOCUMENT_ROOT']."/config/clicksor_760.php");
-	?>
 </div>
-<?
-include($_SERVER['DOCUMENT_ROOT']."/config/kontera.php");
-?>
+<script type="text/javascript">
+var list = new buddy.AjaxDynamicList({
+    url : 'ajax-list-countries.php'
+});
+list.add('country', 'getCountriesByLetters');
+list.add('country2', 'getCountriesByLetters');
+list.add('city', 'getCity');
+
+</script>
 </body>
 </html>

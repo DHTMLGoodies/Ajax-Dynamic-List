@@ -1,4 +1,4 @@
-<?
+<?php
 
 $conn = mysql_connect("localhost","root","administrator");
 mysql_select_db("ajax_dynamic_list",$conn);
@@ -208,6 +208,16 @@ for($no=0;$no<count($countries);$no++){
 	$countries[$no] = trim($countries[$no]);
 	mysql_query("insert into ajax_countries(countryName)values('".$countries[$no]."')") or die(mysql_error());
 	
+}
+
+$cities = array(
+    "San Fransisco", "Los Angeles", "Houston", "Haugesund", "Stavanger", "San Diego", "New York", "London", "Madrid", "Manchester", "Barcelona", "Paris","Aberdeen","Chennai","Dover", "Egersund", "Frankfurt",
+    "Grimstad","J"
+);
+
+mysql_query("delete from ajax_city");
+foreach($cities as $city){
+    mysql_query("insert into ajax_city(city_name)values('". $city. "')");
 }
 
 ?>
