@@ -1,0 +1,270 @@
+<?
+@include($_SERVER['DOCUMENT_ROOT']."/config/log_visitors.inc");
+?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<title>DHTML blindfold trainer</title>
+	<?
+	@include($_SERVER['DOCUMENT_ROOT']."/config/metatags.inc");
+	?>	
+	<style type="text/css">
+
+	body{
+		background-color:#E2EBED;
+		font-family: Trebuchet MS, Lucida Sans Unicode, Arial, sans-serif;	/* Font to use */
+		text-align:center;
+	}
+
+	#theBoard{	/* Container for the board */
+		position:relative;	/* Don't remove this value - it makes sure that pieces are positioned correctly */
+		display:none;	/* Initially hide the board */
+		float:left;	
+		width:370px;	/* width and height of board div */
+		height:374px;
+		
+	}
+	#heading{	
+		margin-left:-10px;	/* The dhtmlgoodies heading should be positioned at the left border of #mainContainer. mainContainer have padding:10px so we use margin-left:-10px to move the logo to the left border */
+	}
+	#mainContainer{	/* Main container */
+		width:830px;	/* Stanard width for 800x600 screens */
+		height:550px;
+		margin-top:15px;	/* Space at top */
+		margin-left:auto;	/* Center align this container */
+		margin-right:auto;	/* Center align this container */
+		text-align:left;	/* Align text to left. Override the inherited text-align:center attribute set for body */
+		border:3px double #000;	/* 3 pixel double black border */
+		padding:10px;	/* Space between border and text inside */
+		background-color:#FFF;	/* White background color */
+	}
+	
+	#helpContainer{	/* Container at the right side of board */
+		float:left;	/* Position it next to the board */
+		width:200px;
+		padding-left:10px;	/* 10 pixel space at left */
+	}
+	#boardPieces{	/* Div for the pieces */
+		position:absolute; /* Don't change this value */
+		left:29px;	/* Don't change these values unless you're implementing a new board and new pieces */
+		top:25px;
+		width:304px;
+		height:304px;
+		
+	}	
+	#quizText{	/* Container for the questions */
+		width:370px;
+		height:374px;
+		float:left;
+	
+	}
+	#quizDescription{	/* The question */
+		font-size:1em;
+		font-style:italic;
+		margin-bottom:5px;
+		margin-top:5px;
+		font-weight:bold;
+		color:#00F;
+		
+	}
+	#quizHeader{
+		font-size:1.2em;
+	}
+	#squareTxt{
+		font-weight:bold;
+		font-size:1.5em;
+		margin:5px;
+		color:#F00;
+	}
+	h1{
+		margin:0px;
+		font-size:1.3em;
+	}
+	.quizButton{	/* Quiz buttons - "black" - "white" */
+		height:40px;
+		background-color:#FFF;
+		border:1px solid #000;
+		width:50px;
+	}
+	
+	#whichQuestion{	/* Heading showing "Question 1 of 20" */
+		margin:0px;
+		font-size:1.2em;
+	}
+	
+	#moveInput{
+		width:50px;
+	}
+	#okButton,#nextButton{
+		background-color:#FFF;
+		border:1px solid #000;
+		
+	}
+	#nextButton{
+		padding:3px;
+	}
+	
+	.generalButton{
+		background-color:#FFF;
+		border:1px solid #000;	
+	}
+	
+	#txt_additionalDescription{	/* Decription of a task shown after you have completed it. example: A description telling you why a move is the best */
+		margin-top:10px;
+		margin-bottom:10px;
+		font-style:italic;
+		color:#F00;
+		font-size:0.9em;
+	}
+	
+	#whitePieces{	/* List of white pieces in a puzzle */
+		color:#F00;
+	}
+	#blackPieces{
+		margin-bottom:10px;	/* List of white pieces in a puzzle */
+		color:#F00;
+	}		
+	
+	#secondPanel{	/* Div showing seconds left on a task */
+		font-weight:bold;
+	}
+	#scorePanel{	/* DIV showing the score */
+		font-weight:bold;
+	}
+	#whiteButton,#blackButton{
+		cursor:pointer;
+	}
+	#blackButton{
+		color:#FFF;
+		background-color:#000;
+	}
+	.buttonPane{
+		width:210px;
+		float:left;
+		padding-left:20px;
+	}
+	.buttonPane input{
+		width:190px;
+		margin:2px;
+	}
+	
+	.knightMovePath{
+		color:#f00;
+		font-size:0.9em;
+		font-weight:italic;
+		clear:both;
+	}
+	
+	</style>	
+	<script type="text/javascript" src="js/chess-blindfold-trainer.js">
+	/************************************************************************************************************
+	(C) www.dhtmlgoodies.com, March 2006
+	
+	This is a script from www.dhtmlgoodies.com. You will find this and a lot of other scripts at our website.	
+	
+	Terms of use:
+	You are free to use this script as long as the copyright message is kept intact. However, you may not
+	redistribute, sell or repost it without our permission.
+	
+	Thank you!
+	
+	www.dhtmlgoodies.com
+	Alf Magne Kalleland
+	
+	************************************************************************************************************/
+	</script>
+</head>
+<body>
+	<div id="mainContainer">
+		<div id="heading"><img src="/images/heading3.gif"></div>
+		<h1>Chess - improve your blindfold skills</h1>
+		<h2 id="whichQuestion"></h2>
+		<div id="theBoard">
+			<img src="images/board.gif">
+			<div id="boardPieces"></div>
+			
+		</div>
+		<div id="quizText">
+			<div id="quizDescription"></div>
+			<div id="whitePieces"></div>
+			<div id="blackPieces"></div>
+			<div id="squareTxt"></div>
+			<input type="button" value="White" id="whiteButton" onclick="answerQuiz('w')" class="quizButton">
+			<input type="button" value="Black" id="blackButton" onclick="answerQuiz('b')" class="quizButton">
+			<input type="button" value="Yes" id="yesButton" onclick="answerQuiz('yes')" class="quizButton">
+			<input type="button" value="No" id="noButton" onclick="answerQuiz('no')" class="quizButton">
+			
+			<input type="text" id="moveInput" value=""> <input id="okButton" type="button" onclick="answerQuiz(document.getElementById('moveInput').value)" value="OK">
+		</div>	
+		<div id="helpContainer">
+			<div id="scorePanel">
+				Score: <span id="quizScore">0</span>
+			</div>
+			<div id="secondPanel">
+				Seconds left: <span id="quizSeconds"></span>
+			</div>
+			<div id="txt_correctOrWrongAnswer"></div>
+			<div id="txt_additionalDescription"></div>
+			<input type="button" id="nextButton" value="Next" onclick="showQuizItem()">
+		</div>
+		<div class="buttonPane">
+			<input type="button" value="Restart (Mixture)" onclick="selectQuiz_mixture()" id="startAllOverAgainButton" class="generalButton">
+			<input type="button" value="Restart (Color of squares)" onclick="selectQuiz_squares()" class="generalButton">
+			<input type="button" value="Restart (diagonals)" onclick="selectQuiz_diagonals()" class="generalButton">
+			<input type="button" value="Restart (Correct move)" onclick="selectQuiz_findTheMove()" class="generalButton">
+			<input type="button" value="Restart (Knight moves - 1)" onclick="selectQuiz_findKnightMove(1)" class="generalButton">
+			<input type="button" value="Restart (Knight moves - 2)" onclick="selectQuiz_findKnightMove(2)" class="generalButton">
+		</div>
+	</div>
+	<script type="text/javascript">
+	/* Add a collection of puzzles */
+	
+	// Custom functions
+	
+
+	
+	function addCustomQuiz()
+	{
+		// Custom puzzles
+		addFindTheMoveQuiz('a4,Kb4,Bd4,Bg2','b5,Ka6','axb5','Mate!',15);
+		addFindTheMoveQuiz('Rc3,Kg6','Bf8,Kg8','Rc8','The black bishop is pinned. Black is forced to move his King to h8. Mate will come in next move',10)
+		addFindTheMoveQuiz('Nf4,Kf3,Rg2','Kh8,Re5','Ng6+','Forking King and Rook',10);
+		addFindTheMoveQuiz('Ba2,a3,b2,f2,g2,h2,Rf1,Kg1,Ng5','Ra8,c6,d7,e7,Rd8,Ke8,Bf8,g6,h5','Bf7#','Mate',20);
+		addFindTheMoveQuiz('Bb2,c3,a2,Ka1,Nb3','Qd5,Kh8,h7,g6,f7','c4+','The black queen is lost. The bishop is checking the king and the pawn is attacking the queen',10);
+		addFindTheMoveQuiz('Bd3,Qd1,f2,g2,h2,Kg1,Re1','Qd4,Nf6,Rc8,f7,g7,h7,Kg8,a5,b6,c7','Bxh7+','The black queen is lost',40);
+		addFindTheMoveQuiz('a6,Qg1,Qh3,Kg1,f2,g2,h3,Qf3','a7,b6,Kc8,Rd8,Qd7,c7,g7,h6','Qb7#','Mate!',8);	
+		addFindTheMoveQuiz('Rg1,a2,b3,c2,Kb1,Bb2','a7,b6,c5,Rf8,f7,f6,h7,Kh8,Qe8','Bxf7#','Mate!','',20);
+		addFindTheMoveQuiz('Qd1,a2,b2,c3,Kb1','Ra8,Kg8,a7,g7,h7,Ng6','Qd5+','Forking King and Rook',20);
+		addFindTheMoveQuiz('Nc6,Bb2,Kh1,g2,h2,f4,a2,b3,Rf1,Qc2','a7,f7,g6,h7,Bb7,Bb8,Rf8,Kg8,Qc7,d7','Ne7#','Mate!',30);
+		addFindTheMoveQuiz('Ba2,Bc1,Kf1,f3,g2,h2','Kh8,h7,a7,b6,Qd8','Bb2+','One move from mate(1. ... Qd4 2. Bxd4# )',15);
+		addFindTheMoveQuiz('Kb1,a3,b2,c2,Bc3,Ra8','f7,g6,Kh7,Qe6,Re7,a7,b6','Rh8#','Mate!',10);
+		addFindTheMoveQuiz('Ng6,Ra8,Ke1,f5','Kh7,g7,f6,a7,b6,Qc5','Rh8#','Mate!',10);
+		addFindTheMoveQuiz('Kf4,Qg1','Kh5','Qg5#','Mate!',8);
+		addFindTheMoveQuiz('Qg3,Bb2,g2,h2,f3,Kg1,Rf1','f7,g7,h7,Kh8,Rf8,Ra8,a7,b6,Qc7','Qxg7#','Mate!',15);
+		addFindTheMoveQuiz('h6,g6,Kh5,Nd7,Bb1','Kh8,a7,b6,Ra8','g7#','Mate!',10);
+		addFindTheMoveQuiz('Ba2,Kg1,g2,h2,Ra3','g7,g6,Kh8,Rb7,a7','Rh3#','Mate!',10);
+		addFindTheMoveQuiz('Kf1,Bg3,h2','Kg7,Rc3','Be5+','Forking king and rook',10);
+		addFindTheMoveQuiz('Ra5,Kg1,f2,g3,Bd2,Rf1,a2,b3','Kg8,f7,h7,Qg4,Rb8,e6','Rg5+','Forking King and Queen',10);
+		addFindTheMoveQuiz('Kg1,f3,g2,h2,Ne5,Rc1,Bg5','Ke8,Qb2,Ra2,g6,h4','Rc8#','Mate!',10);
+		addFindTheMoveQuiz('d5,e5,Re1,f2,g2,h3,Kg1','Qd7,Kf7,g5,h4','e6+','Forking King and Queen',10);
+		addFindTheMoveQuiz('Bb2,Ng4,e4,f3,Kg1,g2,h2,Re1','f7,g6,h7,Rf8,Kg8,Qe8','Nh6#','Mate!',10);
+		addFindTheMoveQuiz('Kg1,g2,h2,f3,Nh5,Qe4','Kg8,Rb8,f7,g6,h7,Qd7','Nf6+','Forking King and Queen',10);	
+		addFindTheMoveQuiz('Qd2,Rd1,a2,b2,c2,kb1,Kb1,bc3','f7,g6,h7,Kg8,Rd8,Qc8','Qxd8+','One move from mate',10);
+		addFindTheMoveQuiz('Kg1,f2,g2,h2,Re1','Bd5,g7,f7,h7,Kg8','Re8#','Mate!',10);
+		addFindTheMoveQuiz('Ke1,Rb1,e2,Bd3,f2','Bc8,Nc7,Kh8,f7,g7,h7','Rb8','Pinning the bishop',10);		
+		
+	}
+	
+
+	
+	
+	selectQuiz_mixture();	// Default type of quiz to start with - i.e. a mixture of find color of squares, squares on same diagonals or 
+
+	
+	
+	startQuiz();
+	
+	</script>
+	
+</body>
+</html>

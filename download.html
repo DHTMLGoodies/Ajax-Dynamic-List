@@ -1,0 +1,107 @@
+<h1>Download Ajax dynamic list</h1>
+<p class="article_links">
+	<a href="scripts/ajax-dynamic-list/ajax-dynamic-list.html" onclick="var scriptWin = window.open(this.href,'ajax_dynamic_list');scriptWin.focus();return false">Demo</a> 
+</p>
+<?php 
+include($_SERVER['DOCUMENT_ROOT']."/config/license-info.inc"); 
+?>
+<h2>Download files</h2>
+<p>You can download the entire script from this <a href="/scripts/ajax-dynamic-list/ajax-dynamic-list.zip">Zip file</a>.</p>
+<h4>Files included in package</h4>
+<ul>
+	<li>ajax-dynamic-list.html = Main HTML file</li>
+	<li>js/ajax-dynamic-list.js = Main JS file</li>
+	<li>js/ajax.js = Ajax (SACK Library) </li>
+	<li>create-countries.php = PHP file which creates a database table for the demo</li>
+	<li>ajax-list-countries = Ajax contacts this file from the script. This file outputs a list of countries</li>
+</ul>
+<h2>Setup</h2>
+<h4>create-countries.php</h4>
+<p>create-countries.php is used to create the countries used in this demo. Before you execute this file in your browser, remember to create a database and
+put in the correct data in mysql_connect() and mysql_select_db() at the top of this file</p>
+<h4>How to apply the script to a text field</h4>
+<p>You apply this script by adding an onkeyup event to an input. Example:</p>
+<p><span class="inline_code">
+&lt;input type="text" id="country" name="country" value="" onkeyup="ajax_showOptions(this,'getCountriesByLetters',event)">
+</span></p>
+<?
+include($_SERVER['DOCUMENT_ROOT']."/config/google-rect.inc");
+?>
+<p>The ajax_showOptions function takes three arguments. The first one should always be "this", i.e. a reference to the 
+text field. The second one is just a string that is sent to the file on the server. This is useful in case you are applying this feature to more than one
+text field. If you do, this string is something you could check on on the server(example: if "getCountriesByLetters" is set, find countries, if
+"getStatesByLetters" is set, get states etc.). The last argument is always <b>event</b>.</p>
+<h4>Javascript variables</h4>
+<p>There are 4 Javascript variables at the top of ajax-dynamic-content.js which you could modify:</p>
+<p><span class="inline_code">
+var ajaxBox_offsetX = 0;<br>
+var ajaxBox_offsetY = 0;<br>
+var ajax_list_externalFile = 'ajax-list-countries.php';	// Path to external file<br>
+var minimumLettersBeforeLookup = 1;	// Number of letters entered before a lookup is performed.<br>
+</span>
+</p>
+<ul>
+	<li>ajaxBox_offsetX = X position offset of the list</li>
+	<li>ajaxBox_offsetY = Y position offset of the list.</li>
+	<li>ajax_list_externalFile = Path to file contacted by Ajax. This is the file that outputs content back to the script.</li>
+	<li>minimumLettersBeforeLookup = How many letters do the user have to type in before the script search for matches</li>
+</ul>
+<h4>ajax_list_externalFile(ajax-list-countries.php)</h4>
+<p>This external file outputs items back to our script. It outputs the items in the following format:</p>
+<p><span class="inline_code">
+1###Namibia|2###Nauru|3###Nepal|4###Netherlands
+</span></p>
+<p>I.e.: A list where the each item is separated by a pipe(|), and ID of country and name of country is separated by ###.</p>
+<h4>Put ID into hidden form input</h4>
+<p>The basic feature of the script is to put the name of selected country into a text field. You may also want to save the ID of the country selected.
+You can do that by putting in a hidden form field where the ID is the same as the name of your country + '_hidden'. </p>
+<p>Example:<br>
+<span class="inline_code">
+	&lt;td>&lt;label for="country">Country: &lt;/label>&lt;/td><br>
+	&lt;td>&lt;input type="text" id="country" name="country" value="" onkeyup="ajax_showOptions(this,'getCountriesByLetters')"><br>
+	&lt;input type="hidden" id="country_hidden" name="country_ID">&lt;/td><br>
+</span></p>
+<p>As you can see, we have a text input with name="country" and a hidden input with id="country_hidden".</p>
+<h4>Css</h4>
+<P>This is the css for the script. It is needed in order for the script to work properly.</pre>
+<p>
+<span class="inline_code">
+/* Big box with list of options */<br>
+#ajax_listOfOptions{<br>
+&nbsp;&nbsp;position:absolute;&nbsp;&nbsp;/* Never change this one */<br>
+&nbsp;&nbsp;width:175px;&nbsp;&nbsp;/* Width of box */<br>
+&nbsp;&nbsp;height:250px;&nbsp;&nbsp;/* Height of box */<br>
+&nbsp;&nbsp;overflow:auto;&nbsp;&nbsp;/* Scrolling features */<br>
+&nbsp;&nbsp;border:1px solid #317082;&nbsp;&nbsp;/* Dark green border */<br>
+&nbsp;&nbsp;background-color:#FFF;&nbsp;&nbsp;/* White background color */<br>
+&nbsp;&nbsp;text-align:left;<br>
+&nbsp;&nbsp;font-size:0.9em;<br>
+&nbsp;&nbsp;z-index:100;<br>
+}<br>
+#ajax_listOfOptions div{&nbsp;&nbsp;/* General rule for both .optionDiv and .optionDivSelected */<br>
+&nbsp;&nbsp;margin:1px;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;padding:1px;<br>
+&nbsp;&nbsp;cursor:pointer;<br>
+&nbsp;&nbsp;font-size:0.9em;<br>
+}<br>
+#ajax_listOfOptions .optionDiv{&nbsp;&nbsp;/* Div for each item in list */<br>
+&nbsp;&nbsp;<br>
+}<br>
+#ajax_listOfOptions .optionDivSelected{ /* Selected item in the list */<br>
+&nbsp;&nbsp;background-color:#317082;<br>
+&nbsp;&nbsp;color:#FFF;<br>
+}<br>
+#ajax_listOfOptions_iframe{<br>
+&nbsp;&nbsp;background-color:#F00;<br>
+&nbsp;&nbsp;position:absolute;<br>
+&nbsp;&nbsp;z-index:5;<br>
+}
+</span>
+</p>
+<h2>Update log</h2>
+<ul>
+	<li>June, 20th, 2006: Fixed a problem in the cache and use of lowercase and uppercase letters.</li>
+	<li>June, 12th, 2006: Fixed problem searching for strings with spaces. The fix is implemented in ajax-list-countries.php.</li>
+	<li>May, 22nd, 2006: Fixed problem with some special characters. Changes applied to ajax-dynamic-list.js.</li>
+	<li>April, 19th, 2006: Added support for putting ID into hidden form inputs.</li>
+</ul>
