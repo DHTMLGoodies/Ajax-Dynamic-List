@@ -1,22 +1,48 @@
-	/************************************************************************************************************
-	(C) www.dhtmlgoodies.com, April 2006
+function IsNumeric(sText)
+{
+   var ValidChars = "0123456789";
+   var IsNumber=true;
+   var Char;
+   for (i = 0; i < sText.length && IsNumber == true; i++)
+   {
+      Char = sText.charAt(i);
+      if (ValidChars.indexOf(Char) == -1)
+      {
+         IsNumber = false;
+      }
+   }
+   return IsNumber;
+}
+/************************************************************************************************************
+Ajax dynamic list
+Copyright (C) 2006  DTHMLGoodies.com, Alf Magne Kalleland
 
-	This is a script from www.dhtmlgoodies.com. You will find this and a lot of other scripts at our website.
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
 
-	Terms of use:
-	You are free to use this script as long as the copyright message is kept intact. However, you may not
-	redistribute, sell or repost it without our permission.
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
 
-	Thank you!
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-	www.dhtmlgoodies.com
-	Alf Magne Kalleland
+Dhtmlgoodies.com., hereby disclaims all copyright interest in this script
+written by Alf Magne Kalleland.
 
-	************************************************************************************************************/
+Alf Magne Kalleland, April 2006
+Owner of DHTMLgoodies.com
+
+
+************************************************************************************************************/
 
 	var ajaxBox_offsetX = 0;
 	var ajaxBox_offsetY = 0;
-	var ajax_list_externalFile = 'ajax-list-countries.php';	// Path to external file
+	var ajax_list_externalFile = '/zip/include/ZipCitiesArray.php';	// Path to external file
 	var minimumLettersBeforeLookup = 1;	// Number of letters entered before a lookup is performed.
 
 	var ajax_list_objects = new Array();
@@ -141,9 +167,35 @@
 		var letters = inputObj.value;
 		var content = ajax_list_objects[ajaxIndex].response;
 		var elements = content.split('|');
+
+      // ----------------------------------- //
+      //      This section added by BL       //
+      // ----------------------------------- //
+      if(elements[0].substr(0,3) == "Not" && paramToExternalFile == "GetOriValues")
+      {
+         document.getElementById("OriNF").innerHTML = "Not Found";
+      }
+      else if(paramToExternalFile == "GetOriValues")
+      {
+         document.getElementById('OriNF').innerHTML = "";
+      }
+      if(elements[0].substr(0,3) == "Not" && paramToExternalFile == "GetDesValues")
+      {
+         document.getElementById('DesNF').innerHTML = "Not Found";
+      }
+      else if(paramToExternalFile == "GetDesValues")
+      {
+         document.getElementById('DesNF').innerHTML = "";
+      }
+      if(elements.length == 1 && elements[0].substr(0,3) != "Not") // (BL) If there is only one item, and it matches, put it in the input box
+      {
+         if(IsNumeric(inputObj.value)){inputObj.value = elements[0].substr(6);} //(BL)
+         else{inputObj.value=elements[0].substr(6);} // (BL)
+      }
+      // ----------------------------------- //
+
 		ajax_list_cachedLists[paramToExternalFile][letters.toLowerCase()] = elements;
 		ajax_option_list_buildList(letters,paramToExternalFile);
-
 	}
 
 	function ajax_option_resize(inputObj)
@@ -157,15 +209,16 @@
 
 	}
 
-	function ajax_showOptions(inputObj,paramToExternalFile,e)
+	function ajax_showOptions(inputObj,paramToExternalFile,Source,e) //(BL) Source added
 	{
-		if(e.keyCode==13 || e.keyCode==9)return;
+      if(e.keyCode==13 || e.keyCode==9)return;
 		if(ajax_list_currentLetters[inputObj.name]==inputObj.value)return;
-		if(!ajax_list_cachedLists[paramToExternalFile])ajax_list_cachedLists[paramToExternalFile] = new Array();
+      ajax_list_cachedLists[paramToExternalFile] = new Array(); // (BL) At one point, the line below was causing problems with numeric (zip code) entries. Believe solved.
+      if(!ajax_list_cachedLists[paramToExternalFile])ajax_list_cachedLists[paramToExternalFile] = new Array();
 		ajax_list_currentLetters[inputObj.name] = inputObj.value;
-		if(!ajax_optionDiv){
+		if(!ajax_optionDiv || Source != ajax_optionDiv.id.substr(0,3)){ // (BL) Added OR
 			ajax_optionDiv = document.createElement('DIV');
-			ajax_optionDiv.id = 'ajax_listOfOptions';
+			ajax_optionDiv.id = Source+'_listOfOptions'; // (BL) replaced "ajax" with Source variable
 			document.body.appendChild(ajax_optionDiv);
 
 			if(ajax_list_MSIE){
@@ -173,10 +226,10 @@
 				ajax_optionDiv_iframe.border='0';
 				ajax_optionDiv_iframe.style.width = ajax_optionDiv.clientWidth + 'px';
 				ajax_optionDiv_iframe.style.height = ajax_optionDiv.clientHeight + 'px';
-				ajax_optionDiv_iframe.id = 'ajax_listOfOptions_iframe';
-
+				ajax_optionDiv_iframe.id = Source+'_listOfOptions_iframe'; // (BL) replaced "ajax" with Source variable
 				document.body.appendChild(ajax_optionDiv_iframe);
 			}
+// alert(ajax_optionDiv.id);
 
 			var allInputs = document.getElementsByTagName('INPUT');
 			for(var no=0;no<allInputs.length;no++){
