@@ -1,8 +1,8 @@
 <?
 
 
-$conn = mysql_connect("localhost","dhtmlgds","Faas78D7");
-mysql_select_db("dhtmlgds",$conn);
+$conn = mysql_connect("localhost","root","administrator");
+mysql_select_db("ajax_dynamic_list",$conn);
 
 if(isset($_GET['getCountriesByLetters']) && isset($_GET['letters'])){
 	$letters = $_GET['letters'];

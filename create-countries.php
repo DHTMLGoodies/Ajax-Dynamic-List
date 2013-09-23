@@ -1,7 +1,7 @@
 <?
 
-$conn = mysql_connect("localhost","username","password");
-mysql_select_db("dbName",$conn);
+$conn = mysql_connect("localhost","root","administrator");
+mysql_select_db("ajax_dynamic_list",$conn);
 
 $string = "Afghanistan,
 Albania,
