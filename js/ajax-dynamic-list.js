@@ -42,14 +42,16 @@ buddy.AjaxDynamicList = new Class({
 
 	ajax_list_objects:[],
 	cache:[],
-	ajax_list_activeInput:undefined,
+	activeInput:undefined,
 	activeListItem:undefined,
 	ajax_list_optionDivFirstItem:false,
-	ajax_list_currentLetters:[],
-	ajax_optionDiv:undefined,
-	ajax_optionDiv_iframe:undefined,
+	currentLetters:[],
+	listContainer:{},
+	listContainer_iframe:undefined,
 
-	ajax_list_MSIE:(navigator.userAgent.indexOf('MSIE') >= 0 && navigator.userAgent.indexOf('Opera') < 0),
+	delay:0.3,
+
+	isMSIE:(navigator.userAgent.indexOf('MSIE') >= 0 && navigator.userAgent.indexOf('Opera') < 0),
 
 	currentListIndex:0,
 
@@ -74,23 +76,28 @@ buddy.AjaxDynamicList = new Class({
 		return returnValue;
 	},
 
-	ajax_option_setValue:function (e) {
-		var inputObj = e.target;
-		var tmpValue = inputObj.innerHTML;
+	setValueFromEl:function (e) {
+		var inputObj = e.target || e;
+		var val = inputObj.innerHTML;
+		if (this.isMSIE)val = inputObj.innerText; else val = inputObj.textContent;
+		if (!val)val = inputObj.innerHTML;
 
-		if (this.ajax_list_MSIE)tmpValue = inputObj.innerText; else tmpValue = inputObj.textContent;
-		if (!tmpValue)tmpValue = inputObj.innerHTML;
-
-		this.ajax_list_activeInput.value = tmpValue;
-		if (document.getElementById(this.ajax_list_activeInput.name + '_hidden'))document.getElementById(this.ajax_list_activeInput.name + '_hidden').value = inputObj.id;
-
+		this.activeInput.value = val;
+		if (document.getElementById(this.activeInput.name + '_hidden')){
+			document.getElementById(this.activeInput.name + '_hidden').value = inputObj.id;
+		}
 
 		this.ajax_options_hide();
+
+		this.fireEvent('change', [val, inputObj]);
 	},
 
 	ajax_options_hide:function () {
-		if (this.ajax_optionDiv)this.ajax_optionDiv.style.display = 'none';
-		if (this.ajax_optionDiv_iframe)this.ajax_optionDiv_iframe.style.display = 'none';
+
+		if (this.activeInput && this.listContainer[this.activeInput.id]){
+			this.listContainer[this.activeInput.id].style.display = 'none';
+		}
+		if (this.listContainer_iframe)this.listContainer_iframe.style.display = 'none';
 	},
 
 	ajax_options_rollOverActiveItem:function (item, fromKeyBoard) {
@@ -101,18 +108,20 @@ buddy.AjaxDynamicList = new Class({
 		this.activeListItem = item;
 
 		if (fromKeyBoard) {
-			if (this.activeListItem.offsetTop > this.ajax_optionDiv.offsetHeight) {
-				this.ajax_optionDiv.scrollTop = this.activeListItem.offsetTop - this.ajax_optionDiv.offsetHeight + this.activeListItem.offsetHeight + 2;
+			if (this.activeListItem.offsetTop > this.listContainer[this.activeInput.id].offsetHeight) {
+				this.listContainer[this.activeInput.id].scrollTop = this.activeListItem.offsetTop - this.listContainer[this.activeInput.id].offsetHeight + this.activeListItem.offsetHeight + 2;
 			}
-			if (this.activeListItem.offsetTop < this.ajax_optionDiv.scrollTop) {
-				this.ajax_optionDiv.scrollTop = 0;
+			if (this.activeListItem.offsetTop < this.listContainer[this.activeInput.id].scrollTop) {
+				this.listContainer[this.activeInput.id].scrollTop = 0;
 			}
 		}
 	},
 
 	populateList:function (letters, param) {
-		this.ajax_optionDiv.innerHTML = '';
+
+		this.listContainer[this.activeInput.id].innerHTML = '';
 		this.activeListItem = false;
+
 		if (this.cache[param][letters.toLowerCase()].length <= 1) {
 			this.ajax_options_hide();
 			return;
@@ -126,7 +135,8 @@ buddy.AjaxDynamicList = new Class({
 			var div = document.createElement('DIV');
 			var items = this.cache[param][letters.toLowerCase()][no].split(/###/gi);
 
-			if (this.cache[param][letters.toLowerCase()].length == 1 && this.ajax_list_activeInput.value == items[0]) {
+
+			if (this.cache[param][letters.toLowerCase()].length == 1 && this.activeInput.value == items[0]) {
 				this.ajax_options_hide();
 				return;
 			}
@@ -136,24 +146,41 @@ buddy.AjaxDynamicList = new Class({
 			div.id = items[0];
 			div.className = 'optionDiv';
 			div.addEvent('mouseenter', this.ajax_options_rollOverActiveItem.bind(this));
-			div.addEvent('click', this.ajax_option_setValue.bind(this));
+			div.addEvent('click', this.setValueFromEl.bind(this));
 
 			if (!this.ajax_list_optionDivFirstItem)this.ajax_list_optionDivFirstItem = div;
-			this.ajax_optionDiv.appendChild(div);
+			this.listContainer[this.activeInput.id].appendChild(div);
 		}
 		if (optionsAdded) {
-			this.ajax_optionDiv.style.display = 'block';
-			if (this.ajax_optionDiv_iframe)this.ajax_optionDiv_iframe.style.display = '';
-			this.ajax_options_rollOverActiveItem(this.ajax_list_optionDivFirstItem, true);
+			this.displayListContainer();
 		}
+	},
 
+	displayListContainer:function(){
+		this.listContainer[this.activeInput.id].style.display = 'block';
+		if (this.listContainer_iframe)this.listContainer_iframe.style.display = '';
+		this.ajax_options_rollOverActiveItem(this.ajax_list_optionDivFirstItem, true);
+
+		for(var key in this.listContainer){
+			if(this.listContainer.hasOwnProperty(key)){
+				if(key != this.activeInput.id){
+					this.listContainer[key].style.display='none';
+				}
+			}
+		}
 	},
 
 	receiveServerResponse:function (content, inputObj, param, whichIndex) {
 		if (whichIndex != this.currentListIndex)return;
 		var letters = inputObj.value;
 
+
 		var elements = content.split('|');
+		elements = this.removeEmptyItems(elements);
+
+		if(elements.length == 1){
+			elements[0] = elements[0].trim();	// Fix for not found which contained white space(new lines)
+		}
 
 		if (elements.length == 1 && elements[0].substr(0, 3) != "Not") // (BL) If there is only one item, and it matches, put it in the input box
 		{
@@ -166,16 +193,30 @@ buddy.AjaxDynamicList = new Class({
 		}
 		// ----------------------------------- //
 
-		this.cache[param][letters.toLowerCase()] = elements;
+		this.storeInCache(param,letters, elements);
 		this.populateList(letters, param);
 	},
 
+	storeInCache:function(param, letters, elements){
+		this.cache[param][letters.toLowerCase()] = elements;
+	},
+
+	removeEmptyItems:function(items){
+		if(items.length > 0 && items[items.length-1] == ''){
+			items.pop();
+		}
+		return items;
+	},
+
 	onResize:function (inputObj) {
-		this.ajax_optionDiv.style.top = (this.getTop(inputObj) + inputObj.offsetHeight + this.ajaxBox_offsetY) + 'px';
-		this.ajax_optionDiv.style.left = (this.getLeft(inputObj) + this.ajaxBox_offsetX) + 'px';
-		if (this.ajax_optionDiv_iframe) {
-			this.ajax_optionDiv_iframe.style.left = this.ajax_optionDiv.style.left;
-			this.ajax_optionDiv_iframe.style.top = this.ajax_optionDiv.style.top;
+
+		var c = this.listContainer[this.activeInput.id];
+		c.style.top = (this.getTop(inputObj) + inputObj.offsetHeight + this.ajaxBox_offsetY) + 'px';
+		c.style.left = (this.getLeft(inputObj) + this.ajaxBox_offsetX) + 'px';
+		var i = this.listContainer_iframe;
+		if (i) {
+			i.style.left = c.style.left;
+			i.style.top = c.style.top;
 		}
 
 	},
@@ -191,15 +232,16 @@ buddy.AjaxDynamicList = new Class({
 
 	createIframe:function () {
 
-		if (this.ajax_list_MSIE && !this.ajax_optionDiv_iframe) {
-			this.ajax_optionDiv_iframe = document.createElement('IFRAME');
-			this.ajax_optionDiv_iframe.border = '0';
-			this.ajax_optionDiv_iframe.style.width = this.ajax_optionDiv.clientWidth + 'px';
-			this.ajax_optionDiv_iframe.style.height = this.ajax_optionDiv.clientHeight + 'px';
-			this.ajax_optionDiv_iframe.id = '_listOfOptions_iframe'; // (BL) replaced "ajax" with Source variable
-			document.body.appendChild(this.ajax_optionDiv_iframe);
+		if (this.isMSIE && !this.listContainer_iframe) {
+			var i = this.listContainer_iframe = document.createElement('IFRAME');
+			i.border = '0';
+			i.style.width = this.listContainer[this.activeInput.id].clientWidth + 'px';
+			i.style.height = this.listContainer[this.activeInput.id].clientHeight + 'px';
+			i.className='listContainerIFrame';
+			i.id = '_listOfOptions_iframe'; // (BL) replaced "ajax" with Source variable
+			i.style.position='absolute';
+			document.body.appendChild(i);
 		}
-
 	},
 
 	params:{},
@@ -223,7 +265,7 @@ buddy.AjaxDynamicList = new Class({
 		field.id = field.id || ('ajax-list-input-' + Math.random()).replace(/\./g, '');
 
 		field.addEvent('focus', this.showList.bind(this));
-		field.addEvent('keyup', this.showList.bind(this));
+		field.addEvent('keyup', this.keySearch.bind(this));
 
 		field.autocomplete = "off";
 
@@ -231,9 +273,18 @@ buddy.AjaxDynamicList = new Class({
 	},
 
 	createOptionContainer:function () {
-		this.ajax_optionDiv = document.createElement('DIV');
-		this.ajax_optionDiv.id = 'ajax_listOfOptions'; // (BL) replaced "ajax" with Source variable
-		document.body.appendChild(this.ajax_optionDiv);
+
+		var c = this.listContainer[this.activeInput.id] = document.createElement('DIV');
+
+		c.id = 'ajax_listOfOptions'; // (BL) replaced "ajax" with Source variable
+		c.className = 'ajaxListContainer listContainer_' + this.params[this.activeInput.id];
+		var id = this.activeInput.id;
+		c.addEvent('mouseenter', function(){
+			this.activeInput = document.id(id);
+		}.bind(this));
+		c.style.position='absolute';
+		c.style.display='none';
+		document.body.appendChild(c);
 
 		var allInputs = document.getElementsByTagName('INPUT');
 		for (var no = 0; no < allInputs.length; no++) {
@@ -246,21 +297,55 @@ buddy.AjaxDynamicList = new Class({
 
 		document.body.addEvent('keydown', this.keyNav.bind(this));
 		document.body.addEvent('resize', this.onResize.bind(this));
+
+		this.listContainer[this.activeInput.id].onselectstart = this.ajax_list_cancelEvent;
+
+		this.createIframe();
+	},
+
+	pendingValue : undefined,
+
+	keySearch:function(e){
+		var input = this.activeInput = e.target;
+		if(input.value != this.pendingValue){
+			this.searchAfterDelay.delay(this.delay * 1000, this, [input.id, e.key ]);
+			this.pendingValue = input.value + '';
+		}
+	},
+
+	searchAfterDelay:function(inputId, key){
+		if(!this.activeInput)return;
+
+		if(this.activeInput.value != this.pendingValue || inputId != this.activeInput.id)return;
+
+		this.showList({
+			target : this.activeInput,
+			key : key
+		});
 	},
 
 	showList:function (e)//(BL) Source added
 	{
-		inputObj = e.target;
-		param = this.params[e.target.id];
+		var inputObj = e.target;
+		var param = this.params[e.target.id];
 
-		this.ajax_list_activeInput = inputObj;
+		this.activeInput = document.id(inputObj);
 
-		if (e.keyCode == 13 || e.keyCode == 9)return;
-		if (this.ajax_list_currentLetters[inputObj.name] == inputObj.value)return;
+		if (e.key == 'enter' || e.key == 'tab')return;
+
+		if (this.currentLetters[inputObj.name] == inputObj.value){
+
+			if(!this.isCacheEmpty(param,inputObj.value)){
+				this.displayListContainer();
+			}
+			return;
+		}
+
 		this.cache[param] = []; // (BL) At one point, the line below was causing problems with numeric (zip code) entries. Believe solved.
 		if (!this.cache[param])this.cache[param] = [];
-		this.ajax_list_currentLetters[inputObj.name] = inputObj.value;
-		if (!this.ajax_optionDiv) { 
+		this.currentLetters[inputObj.name] = inputObj.value;
+
+		if (!this.listContainer[this.activeInput.id]) {
 			this.createOptionContainer();
 		}
 
@@ -269,20 +354,30 @@ buddy.AjaxDynamicList = new Class({
 			return;
 		}
 
-		this.ajax_optionDiv.style.top = (this.getTop(inputObj) + inputObj.offsetHeight + this.ajaxBox_offsetY) + 'px';
-		this.ajax_optionDiv.style.left = (this.getLeft(inputObj) + this.ajaxBox_offsetX) + 'px';
-		if (this.ajax_optionDiv_iframe) {
-			this.ajax_optionDiv_iframe.style.left = this.ajax_optionDiv.style.left;
-			this.ajax_optionDiv_iframe.style.top = this.ajax_optionDiv.style.top;
-		}
+		this.alignContainerWithTextBox();
 
 
-		this.ajax_optionDiv.onselectstart = this.ajax_list_cancelEvent;
 		this.currentListIndex++;
 		if (this.cache[param][inputObj.value.toLowerCase()]) {
 			this.populateList(inputObj.value, param, this.currentListIndex);
 		} else {
 			this.sendRequest(inputObj, param);
+		}
+	},
+
+	isCacheEmpty:function(param, letters){
+		letters = letters.toLowerCase();
+		if(!this.cache[param])return true;
+		if(!this.cache[param][letters])return true;
+		return this.cache[param][letters].length == 0 || this.cache[param][letters][0].indexOf('#') == -1;
+	},
+
+	alignContainerWithTextBox:function(){
+		this.listContainer[this.activeInput.id].style.top = (this.getTop(this.activeInput) + this.activeInput.offsetHeight + this.ajaxBox_offsetY) + 'px';
+		this.listContainer[this.activeInput.id].style.left = (this.getLeft(this.activeInput) + this.ajaxBox_offsetX) + 'px';
+		if (this.listContainer_iframe) {
+			this.listContainer_iframe.style.left = this.listContainer[this.activeInput.id].style.left;
+			this.listContainer_iframe.style.top = this.listContainer[this.activeInput.id].style.top;
 		}
 	},
 
@@ -307,8 +402,8 @@ buddy.AjaxDynamicList = new Class({
 	keyNav:function (e) {
 		if (document.all)e = event;
 
-		if (!this.ajax_optionDiv)return undefined;
-		if (this.ajax_optionDiv.style.display == 'none')return undefined;
+		if (!this.listContainer[this.activeInput.id])return undefined;
+		if (this.listContainer[this.activeInput.id].style.display == 'none')return undefined;
 
 		if (e.key == 'up') {    // Up arrow
 			if (!this.activeListItem)return undefined;
@@ -327,11 +422,11 @@ buddy.AjaxDynamicList = new Class({
 
 		if (e.key == 'enter' || e.key == 'tab') {    // Enter key or tab key
 			if (this.activeListItem && this.activeListItem.className == 'optionDivSelected') {
-				this.ajax_option_setValue({ target:this.activeListItem });
+				this.setValueFromEl({ target:this.activeListItem });
 			}
 			this.ajax_options_hide();
 			if (e.key == 'enter') {
-				this.ajax_list_activeInput.blur();
+				this.activeInput.blur();
 			}
 			return e.key != 'enter';
 		}
